@@ -1,0 +1,20 @@
+##Template to create a boxplot in R
+#Assign df first
+library(ggplot2)
+y <- ggplot(df, aes(x=x, y=y, color=color)) + #main information about plot goes here
+      geom_boxplot(alpha = 0, color = 'black') + #this means it's a boxplot; change this if you want a different type of plot
+      geom_point(position=position_jitter(w=0.1,h=0)) + #This creates small points
+      scale_y_log10(breaks=c(25,100,400,1000,9000)) + #This creates numeric breaks for your diagram; change these for smaller values
+      xlab('') + #Assign a label for your x axis
+      ylab('') + #Assign a label for your y axis
+      ggtitle('') + #Assign a title to your diagram
+      theme(axis.text = element_text(size = rel(1.75))) + #make the text on your axes bigger or smaller
+      theme(axis.title = element_text(size = rel(1.75))) + #make the text for your axis labels bigger or smaller
+      theme(legend.text = element_text(size = rel(1.75))) + #make your legend text bigger or smaller; unnecessary if you don't have a legend
+      theme(legend.title = element_text(size = rel(1.75))) + #make your legend label bigger or smaller
+      theme(title = element_text(size = rel(1.5))) + #make your diagram's title bigger or smaller
+      theme_bw(base_size = 32)+ #this will make your diagram's background white
+      theme(axis.text.y = element_text(angle = 45, vjust = 0.5, hjust=1)) + #turn your axis text on a 45 degree angle
+      theme(axis.title.y = element_text(angle = 45, vjust = 0.75, hjust=1)) #turn your axis label on a 45 degree angle
+y #print plot in R
+ggsave('/directory/boxplot.png') #save your plot
