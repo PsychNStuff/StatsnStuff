@@ -1,0 +1,72 @@
+#timeseries graph with output from MATLAB
+
+#first load libraries
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(EnvStats)
+
+#import behavioral data, find quartiles for measure
+behavioraldata <- read.csv("/path/to/directory.csv", header = TRUE)
+
+#this example is for age, this will output first and third quartiles
+summaryStats(behavioraldata$Age, quartiles = TRUE)
+
+#import file from matlab output and extracted peak info, this is from Alex Wiesman's timeseries extraction
+extractedpeak_condition1_timeseries <- read.table("/path/to/directory/condition1/Relative_sourcespace_virtSens_TFA_vectorSum_timeSeries_absolute_Relatives.txt", header = TRUE, sep = ",", check.names = F)
+extractedpeak_condition1_timeseries$ID <- sapply(str_split(extractedpeak_condition1_timeseries$FileName, "_"), '[', 2)
+extractedpeak_condition2_timeseries <- read.table("/path/to/directory/condition2/Relative_sourcespace_virtSens_TFA_vectorSum_timeSeries_absolute_Relatives.txt", header = TRUE, sep = ",", check.names = F)
+extractedpeak_condition2_timeseries$ID <- sapply(str_split(extractedpeak_condition2_timeseries$FileName, "_"), '[', 2)
+
+#join timeseries and extracted peak info with behavioral data
+extractedpeak_condition1_df <- extractedpeak_condition1_timeseries %>% 
+  full_join(select(behavioraldata, Age, extractedpeak_fullname_condition1, ID), by="ID")
+extractedpeak_condition2_df <- extractedpeak_condition2_timeseries %>% 
+  full_join(select(behavioraldata, Age, extractedpeak_fullname_condition2, ID), by="ID")
+
+#removes NA data from extracted peaks, so outliers not included in final graph
+extractedpeak_condition1_naremoved_df <- na.omit(extractedpeak_condition1_df)
+extractedpeak_condition2_naremoved_df <- na.omit(extractedpeak_condition2_df)
+
+#create age bins at 1st and 3rd quartiles, creat group variable with agebin plus condition
+mod_extractedpeak_condition1 <- extractedpeak_condition1_naremoved_df %>% mutate(AgeBin = case_when(Age < 10 ~ 'under_10',
+                                                                                                Age >= 10 & Age <= 15 ~ '10_to_15',
+                                                                                                Age > 15 ~ 'over_15'),
+                                                                             subID = paste(extractedpeak_condition1_naremoved_df$ID, "condition1", sep="_"))
+mod_extractedpeak_condition1 <- mod_extractedpeak_condition1 %>% mutate(Group = paste(mod_extractedpeak_condition1$AgeBin, "condition1", sep="_")) #for this graph we need both age and condition separately
+
+#repeat for condition2
+mod_extractedpeak_condition2 <- extractedpeak_condition2_naremoved_df %>% mutate(AgeBin = case_when(Age < 10 ~ 'under_10',
+                                                                                                Age >= 10 & Age <= 15 ~ '10_to_15',
+                                                                                                Age > 15 ~ 'over_15'),
+                                                                             subID = paste(extractedpeak_condition2_naremoved_df$ID, "condition2", sep="_"))
+mod_extractedpeak_condition2 <- mod_extractedpeak_condition2 %>% mutate(Group = paste(mod_extractedpeak_condition2$AgeBin, "condition2", sep="_")) #for this graph we need both age and condition separately
+
+#remove unnecessary columns, otherwise melt will include them which will be messy
+mod_extractedpeak_condition1 <- mod_extractedpeak_condition1 %>% select(-c('ID', 'FileName', 'Age', 'extractedpeak_fullname_condition1'))
+mod_extractedpeak_condition2 <- mod_extractedpeak_condition2 %>% select(-c('ID', 'FileName', 'Age', 'extractedpeak_fullname_condition2'))
+
+#place related and unrelated datasets togehter
+extractedpeak_full <- rbind(mod_extractedpeak_condition1, mod_extractedpeak_condition2)
+
+#melt to get into format needed for graph with stat summary
+mod_extractedpeak_timeseries = melt(extractedpeak_full, id.vars = c("subID", "AgeBin", "Group"))
+
+#summary stats calculates mean for each group, creates plot
+col <- c("#ffbc42", "#d81159", "#8f2d56", "#218380", "#73d2de", "#1a659e") #always use this to set colors, can change colors if you wish
+extractedpeak_timeplot <- ggplot(data = mod_extractedpeak_timeseries, aes(x=variable, y=value, color = Group, group = Group)) +
+  scale_colour_manual(values = unique(as.character(col))) +
+  geom_hline(yintercept = 0, color = "black")+
+  stat_summary(geom = "line", fun.y = mean) + #actual calculation here
+  theme_bw(base_size = 8) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Time (ms)", y="Relative Power (%)") +
+  theme(aspect.ratio = 1) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=5)) +
+  scale_x_discrete(guide = guide_axis(check.overlap = TRUE)) #this removes some time labels for sanity, otherwise they overlap like crazy
+extractedpeak_timeplot + scale_fill_manual(values=c("#ffbc42", "#d81159", "#8f2d56", "#218380", "#73d2de", "#1a659e")) #these colors should match
+
+#save plot  
+ggsave("extractedpeak_timeplot.tiff", path = "/path/to/directory", units="in", width=6, height=4, dpi=600, compression = 'lzw')
+
