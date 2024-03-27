@@ -1,0 +1,41 @@
+library(reshape2) 
+library(ggplot2)
+library(ggpubr)
+library(RColorBrewer)
+library(tidyverse)
+
+#load data
+example_ttest <- read.csv("/path/to/directory.csv", header = TRUE)
+
+# creating the modified dataframe with each condition and ids
+example_df <- melt(example_ttest, id.vars='subID',  
+                                  measure.vars=c('extractedpeak_condition1',
+                                                 'extractedpeak_condition2'))
+
+#list with variables for t test
+example_comparisons <- list(c("extractedpeak_condition1", "extractedpeak_condition2"))
+
+#edit dataframe so r recognizes t test, define groups
+data_mod <- na.omit(example_df) # mostly useful for getting rid of error messages, R removes outliers from paired t for you
+data_mod$level <- sapply(str_split(data_mod$variable, "_"), '[', 11)
+data_mod$region <- sapply(str_split(data_mod$variable, "_"), '[', 7)
+data_mod$group <- paste(data_mod$, data_mod$level, sep="_")
+
+t_graph <- ggplot(data_mod, aes(x=group, y=value, fill=group)) + #main information about plot goes here, use data_mod
+  geom_violin() +
+  geom_boxplot(width=.1, outlier.shape = NA) +
+  geom_jitter(position=position_jitter(w=0.1,h=0), size = 0.5) + #may need to edit size based on number of points in data
+  xlab('') + #Assign a label for your x axis
+  ylab('') + #Assign a label for your y axis
+  ggtitle('Title') + #Assign a title to your diagram
+  theme_bw(base_size = 10) #this will make your diagram's background white
+t_graph + scale_fill_manual(values=c("#E01A4F", "#53B3CB")) #use colors you wish to use
+
+#optional for graph:
+#theme(axis.text.y = element_text(angle = 45, vjust = 0.5, hjust=1)) + #turn your axis text on a 45 degree angle
+#theme(axis.title.y = element_text(angle = 45, vjust = 0.75, hjust=1)) #turn your axis title on a 45 degree angle
+#stat_summary(fun = mean, geom = "text", vjust = 5, aes(label = paste("M = ", round(..y.., digits = 1)))) + #adds your mean as a number to your plot
+#stat_compare_means(paired = TRUE, method = "t.test", comparisons = my_comparisons, vjust = 1.75, hjust = -0.5) #adds ANOVA p value to your plot
+#theme(legend.position = "none") #this gets rid of the legend
+
+ggsave("examplepairedt.tiff", path = "path/to/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
