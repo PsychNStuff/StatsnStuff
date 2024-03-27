@@ -1,0 +1,50 @@
+#first load libraries
+library(lmtest)
+library(car)
+library(interactions)
+library(ggplot2)
+library(tidyverse)
+
+#make data long format (example given for two conditions)
+
+mod_data <- read.csv("/path/to/directory.csv", header = TRUE)
+mod_data_condition1 <- mod_data %>% transmute(extractedpeak = extractedpeak_condition1,
+                                      Age = Age, gender = Gender, ACC = Related_Accuracy, RT = Related_RT,
+                                      subID = paste(mod_data$subID, "related", sep="_"),
+                                      Group = "condition1")
+mod_data_condition2 <- mod_data %>% transmute(extractedpeak = extractedpeak_condition2,
+                                      Age = Age, gender = Gender, ACC = Related_Accuracy, RT = Related_RT,
+                                      subID = paste(mod_data$subID, "related", sep="_"),
+                                      Group = "condition2")
+mod_data_full <- rbind(mod_data_condition1, mod_data_condition2)
+
+#make dummy variables if needed
+mod_data_full$gender_num[mod_data_full$gender=="M"] <- 0
+mod_data_full$gender_num[mod_data_full$gender=="F"] <- 1
+mod_data_full$gender_num <- as.numeric(mod_data_full$gender_num)
+mod_data_full$group_num[mod_data_full$Group=="condition1"] <- 0
+mod_data_full$group_num[mod_data_full$Group=="condition2"] <- 1
+mod_data_full$group_num <- as.numeric(mod_data_full$group_num)
+
+#save data!!!
+write.table(mod_data_full, quote = FALSE, row.names = FALSE, sep = ",", '/path/to/directory.csv')
+
+# Computer the interaction term
+model_extractedpeak <- lm(formula = extractedpeak ~Age*group_num, data = mod_data_full, na.action = na.omit)
+
+#print summary
+summary(model_extractedpeak)
+
+#pretty interaction graph
+col <- c("#E01A4F", "#53B3CB") #always use this to set colors, replace with hex code for whatever colors you wish to use
+
+extractedpeak_interact <- ggplot(data=mod_data_full, aes(x=Age, y=extractedpeak, color = Group, group = Group)) +
+  scale_colour_manual(values = unique(as.character(col))) +
+  geom_hline(aes(x=Age, y=extractedpeak, color = "black"), yintercept = 0) +
+  geom_smooth(aes(x=Age, y=extractedpeak, fill = Group), method = "lm", size=1.5, se = TRUE, alpha = .4) +
+  geom_point(aes(x=Age, y=extractedpeak), linewidth=0.75, alpha=.8)+
+  theme_bw(base_size = 8) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Age", y="Amplitude (pseudo-t)") +
+  theme(aspect.ratio = 1)
+extractedpeak_interact + scale_fill_manual(values=c("#E01A4F", "#53B3CB")) 
