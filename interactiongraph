@@ -48,3 +48,25 @@ extractedpeak_interact <- ggplot(data=mod_data_full, aes(x=Age, y=extractedpeak,
   labs(x="Age", y="Amplitude (pseudo-t)") +
   theme(aspect.ratio = 1)
 extractedpeak_interact + scale_fill_manual(values=c("#E01A4F", "#53B3CB")) 
+
+#graph with gradients for a variable like age
+library(ggnewscale)
+
+extractedpeak_colorbyage_interact <- ggplot(mapping = aes(x=Age, y=extractedpeak)) +
+  geom_smooth(data = mod_data_full, aes(x=Age, y=extractedpeak, fill = Group, color = Group), method = "lm", size=1.5, se = TRUE, alpha = .4) +
+  scale_fill_manual(values=c("#E01A4F", "#53B3CB")) +
+  scale_colour_manual(values = unique(as.character(col))) +
+  theme_bw(base_size = 8) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Age", y="Amplitude (psuedo-t)") +
+  theme(aspect.ratio = 1) +
+  new_scale_color() +
+  geom_point(data = mod_data_condition1, aes(color = Age, shape = ".", alpha=.8)) +
+  scale_color_gradientn(colors = c('#E01A4F', '#fce9ee')) +
+  new_scale_color() +
+  geom_point(data = mod_data_condition2, aes(color = Age, shape = ".", alpha=.8)) +
+  scale_color_gradientn(colors = c('#30899f', '#cbe8ef'))
+extractedpeak_colorbyage_interact
+
+ggsave("extractedpeak_colorbyage_interact.tiff", path = "path/to/my/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
+
