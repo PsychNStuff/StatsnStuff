@@ -39,3 +39,20 @@ t_graph + scale_fill_manual(values=c("#E01A4F", "#53B3CB")) #use colors you wish
 #theme(legend.position = "none") #this gets rid of the legend
 
 ggsave("examplepairedt.tiff", path = "path/to/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
+
+#option to make a raincloud type graph with half violin plots
+#paired t graph with lines between
+library(see) #half violin making
+
+t_graph <- ggplot(data_mod, aes(x=group, y=value, fill=group)) + #main information about plot goes here, use data_mod
+  geom_violinhalf(flip = c(1)) +
+  geom_line(mapping = aes(group = ID), alpha = 0.3) +
+  geom_boxplot(width=.1, outlier.shape = NA) +
+  xlab('') + #Assign a label for your x axis
+  ylab('') + #Assign a label for your y axis
+  ggtitle('Title') + #Assign a title to your diagram
+  theme_bw(base_size = 10) #this will make your diagram's background white
+t_graph + scale_fill_manual(values=c("#E01A4F", "#53B3CB"))
+
+ggsave("some_pairedt_raincloud.tiff", path = "path/to/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
+
