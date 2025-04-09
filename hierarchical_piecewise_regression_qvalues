@@ -1,0 +1,115 @@
+#load libraries
+library(tidyverse)
+library(reshape2)
+library(jtools)
+library(segmented)
+library(readxl)
+library(dplyr)
+library(qvalue)
+library(apaTables)
+library(boot)
+
+data <- read_xlsx('D:/path/to/my/data.xlsx')
+
+#showing for hippocampal volume, age, and gender
+#sum hippocampal volume across hemispheres
+hv_total <- rowSums(data[,c("left_HV", "right_HV")])
+
+#calculating residuals for bilateral HV
+hv_residuals_temp <- lm(hv_total ~ EstimatedTotalIntraCranialVol, data = data)
+data$hv_residuals <- rstandard(hv_residuals_temp)
+
+#mean center age if applicable
+data$age_mc <- scale(data$age, center = T, scale = F)
+
+#create quadratic term for age
+data$age_mc_quadratic <- data$age_mc^2
+
+#recode gender as numeric
+#recode gender
+data$gender_num[data$Gender=="M"] <- 0
+data$gender_num[data$Gender=="F"] <- 1
+data$gender_num <- as.numeric(data$gender_num)
+
+quadratic_model_1 <- lm(hv_residuals ~ age_mc + gender_num, data = data)
+quadratic_model_2 <- lm(hv_residuals ~ age_mc + gender_num + age_mc_quad, data = data)
+summary(quadratic_model_1) #summary gives you info for each model separately
+summary(quadratic_model_2)
+confint(quadratic_model_2) #check that CI does not cross 0
+
+anova(quadratic_model_1, quadratic_model_2) #this runs the actual hierarchical regression
+apa.reg.table(quadratic_model_1, quadratic_model_2, table.number = 1, filename = 'D:/path/to/my/output/hierarchicalregression.doc') #this prints an APA formatted table
+p.adjust(p = .05, n = 5) #can use p.adjust here or Storey's q-value (see end of file)
+
+#calculate breakpoint
+breakpoint_hv <-segmented(lm(hv_residuals ~ age + gender_num, data=data),seg.Z=~age, seg.control = gender_num) #here we use raw age since we want to know at what age the breakpoint occurs, and it should take the quadratic relationship into account anyway
+pscore.test(breakpoint_hv, alternative = "two.sided", seg.Z=~age) #pscore.test is considered good for 1 breakpoint, see Muggeo et al. 2016 and davies test (davies.test) can be used for multiple breakpoints
+slope(breakpoint_hv) #gives you coefficients and CI for each slope separately
+summary(breakpoint_hv)
+coef(breakpoint_hv)
+confint(breakpoint_hv) #check does not cross 0
+
+#next we examine breakpoint differences by sex
+data_males <- data[data$Gender != "F", ]
+data_females <- data[data$Gender != "M", ]
+
+#calculate breakpoint for each separately
+breakpoint_hv_male <-segmented(lm(hv_residuals ~ age, data=data_males),seg.Z=~age)
+summary(breakpoint_hv_male)
+pscore.test(breakpoint_hv_male)
+coef(breakpoint_hv_male)
+confint(breakpoint_hv_male)
+slope(breakpoint_hv_male)
+
+breakpoint_hv_female <-segmented(lm(hv_residuals ~ age, data=data_females),seg.Z=~age)
+pscore.test(breakpoint_hv_female)
+summary(breakpoint_hv_female)
+coef(breakpoint_hv_female)
+confint(breakpoint_hv_female)
+slope(breakpoint_hv_female)
+
+#getting confidence interval difference per sex, we extract fitted values first
+fittedvals_hv_female <- fitted(breakpoint_hv_female)
+fittedvals_hv_male <- fitted(breakpoint_hv_male)
+total_hv <- c(fittedvals_hv_female,fittedvals_hv_male)
+
+#this part stratifies by sex and utilizes the mean difference between male and female with different distributions
+randid <- as.factor(c(rep("female",length(fittedvals_hv_female)),rep("male",length(fittedvals_hv_male))))
+hv_gender_diff <- function(x,i) mean(x[i[1:50]]) - mean(x[i[50:101]]) #this should be the numbers of female vs male you have in your data, eg 50 females and 51 males
+
+#bootstrapped CI
+set.seed(2) #use this so the seed is the same and replicates prior findings
+hv_gender_bootvals <- boot(total_hv, hv_gender_diff, strata=randid, R = 1000)
+plot(hv_gender_bootvals)
+
+#based on results of plot(), suggested to generally use bca for normal distributions or perc for non-normal distributions
+boot.ci(bipresubiculum_gender_bootvals, type="bca")
+
+#this can feel a bit like a black box, so try with some fake data to see how this looks
+test_a <- c(100, 101, 102)
+test_b <- c(-101, -102, -103)
+totaltest <- c(test_a, test_b)
+randid <- as.factor(c(rep("a",length(test_a)),rep("b",length(test_b))))
+test_diff <- function(x,i) mean(x[i[1:3]]) - mean(x[i[4:6]])
+test_bootvals <- boot(totaltest, test_diff, strata=randid, R = 1000)
+plot(test_bootvals)
+boot.ci(test_bootvals, type="bca")
+
+#multiple comparison testing with Storey's q value (Storey, 2002, 2003)
+#can try doing it multiple ways with things like this, to see if it might be better to focus on a certain subfield or one gender
+#this first step is assigning p values from prior tests (eg, p value of each slope per subfield)
+female_pvals <- c(.05, .04, .03)
+male_pvals <- c(.004, .005, .003)
+both_pvals <- c(.05, .04, .03, .004, .005, .003)
+
+hist(female_pvals, nclass= 20) #this shows you, visually, where a good lambda might be
+qvalue_truncp(female_pvals) #here, look at the pi0.lambda column. Find the lowest value and see where it corresponds to the regular lambda.
+qvalue(female_pvals, lambda = 0.05) #set the lambda value; usually, try multiple values. It can only be as high as your highest p value, otherwise use qvalue_truncp.
+
+hist(male_pvals, nclass= 20)
+qvalue_truncp(male_pvals)
+qvalue(male_pvals, lambda = 0.005)
+
+hist(both_pvals, nclass= 20)
+qvalue_truncp(both_pvals)
+qvalue(both_pvals, lambda = 0.05)
