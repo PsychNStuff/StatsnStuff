@@ -1,0 +1,60 @@
+#load libraries
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(jtools)
+library(readxl)
+
+#load data
+data <- read_xlsx('D:/path/to/my/data.xlsx')
+
+#grab the values needed, makes it a bit simpler
+age_hv_graph <- data %>% transmute(CA1 = CA1_residuals, CA23 = CA23_residuals,
+                                                                  CA4DG = CA4DG_residuals,
+                                                                  subiculum = subiculum_residuals,
+                                                                  presubiculum = presubiculum_residuals,
+                                                                  Age = Age,
+                                                                  subID = subID)
+
+#melt to get into format needed for graph with stat summary
+age_hv_graph_melt = melt(age_hv_graph, id.vars = c("subID", "Age"))
+
+col <- c("#07aced", "#f94144", "#f9c74f", "#90be6d", "#9d73e6") #can change as needed, but this has a nice palette
+
+#make graph
+ggplot(data=age_hv_graph_melt, aes(x=Age, y=value, color = variable, group = variable)) +
+  scale_colour_manual(values = unique(as.character(col))) +
+  scale_x_continuous(expand = c(0, 0)) + #this may not be prefereable, it essentially extends your trend line which loks prettier but may not be as accurate
+  theme_bw(base_size = 8) +
+  geom_point(size=1, alpha=.5)+
+  stat_smooth(se=F,linewidth = 1) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Age (years)", y="HV (residuals)")
+ggsave("Age_hv_quadratic_.tiff", path = "D:/path/to/my/graphs", units="in", width=8, height=8, dpi=600, compression = 'lzw')
+
+#graph by a group
+col <- c("#07aced", "#f94144")
+gender_effects_CA1 <- ggplot(data=data, aes(x=Age, y=CA1_residuals, color = gender_numfac, group = gender_numfac)) +
+  scale_colour_manual(values = unique(as.character(col))) +
+  geom_point(size=1, alpha=.6) +
+  stat_smooth(se=T,linewidth = 1, alpha = .2, aes(fill = gender_numfac)) +
+  theme_bw(base_size = 8) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Age (years)", y="CA1 (residuals)") +
+  theme(aspect.ratio = 1)
+gender_effects_CA1 + scale_fill_manual(values=c("#07aced", "#f94144"))
+ggsave("gender_effects_CA1_quadratic.tiff", path = "D:/path/to/my/graphs", units="in", width=8, height=8, dpi=600, compression = 'lzw')
+
+#can also make a simple line graph by age and hv
+quadratic_model_CA1_age_plot <- ggplot(data=data, aes(x=Age, y=CA1_residuals)) +
+  scale_x_continuous(expand = c(0, 0)) +
+  theme_bw(base_size = 8) +
+  geom_point(size=1, alpha=1, color = "#9d73e6")+
+  stat_smooth(se=T,linewidth = 1, color = "#9d73e6", fill = "#9d73e6", alpha = .2) +
+  theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
+  labs(x="Age (years)", y="CA1 (residuals)")
+quadratic_model_CA1_age_plot
+ggsave("Age_CA1_quadratic.tiff", path = "D:/path/to/my/graphs", units="in", width=8, height=8, dpi=600, compression = 'lzw')
+
+
