@@ -83,7 +83,7 @@ hv_gender_bootvals <- boot(total_hv, hv_gender_diff, strata=randid, R = 1000)
 plot(hv_gender_bootvals)
 
 #based on results of plot(), suggested to generally use bca for normal distributions or perc for non-normal distributions
-boot.ci(bipresubiculum_gender_bootvals, type="bca")
+boot.ci(bipresubiculum_gender_bootvals, type="perc")
 
 #this can feel a bit like a black box, so try with some fake data to see how this looks
 test_a <- c(100, 101, 102)
@@ -93,7 +93,32 @@ randid <- as.factor(c(rep("a",length(test_a)),rep("b",length(test_b))))
 test_diff <- function(x,i) mean(x[i[1:3]]) - mean(x[i[4:6]])
 test_bootvals <- boot(totaltest, test_diff, strata=randid, R = 1000)
 plot(test_bootvals)
-boot.ci(test_bootvals, type="bca")
+boot.ci(test_bootvals, type="perc")
+
+#similar to above, getting confidence interval difference for slope
+#first subset data into males and females after breakpoint
+subset_males_hippocampus <- data[data$subject_age >= 50, ] #should be breakpoint for males
+subset_females_hippocampus <- data[data$subject_age >= 40, ] #should be breakpoint for females
+randid <- as.factor(c(rep("female",length(subset_females_hippocampus$hv_residuals)),rep("male",length(subset_males_hippocampus$hv_residuals)))) #create id for sex
+total_hippocampus <- full_join(subset_females_hippocampus, subset_males_hippocampus) #merge datasets
+
+#run this to get the function that will be used in boot.ci to calculate fisher's z
+bs <- function(formula, data, indices)
+{
+  d <- data[indices,] # allows boot to select sample
+  fit1 <- lm(formula, data=d[1:50,]) #number of females in data, use this first because total_hippocampus is joined with females first
+  fit2 <- lm(formula, data=d[51:100,]) #number of males in data
+  se1 <- summary(fit1)$coefficients[, 2]
+  se2 <- summary(fit2)$coefficients[, 2]
+  return((coef(fit1)-coef(fit2))/(sqrt((se1^2)+(se2^2))))
+}
+
+#run bootstrapping. This can also be done as a p-value but will want to stick with reporting the same statistics used elsewhere in the paper.
+hippocampus_gender_bootvals_slope <- boot(formula = hv_residuals ~ subject_age, data = total_hippocmapus, bs,
+                                          strata = randid, R = 1000)
+plot(hippocampus_gender_bootvals_slope)
+set.seed(9)
+boot.ci(hippocampus_gender_bootvals_slope, type="perc")
 
 #multiple comparison testing with Storey's q value (Storey, 2002, 2003)
 #can try doing it multiple ways with things like this, to see if it might be better to focus on a certain subfield or one gender
