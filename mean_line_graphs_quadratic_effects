@@ -28,17 +28,47 @@ ggplot(data=age_hv_graph_melt, aes(x=Age, y=value, color = variable, group = var
   scale_x_continuous(expand = c(0, 0)) + #this may not be prefereable, it essentially extends your trend line which loks prettier but may not be as accurate
   theme_bw(base_size = 8) +
   geom_point(size=1, alpha=.5)+
-  stat_smooth(se=F,linewidth = 1) +
+  stat_smooth(se=F,linewidth = 1) + #this is technically a loess regression line but can be nice for showing nonlinear relationships, including quadratic ones
   theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
   labs(x="Age (years)", y="HV (residuals)")
 ggsave("Age_hv_quadratic_.tiff", path = "D:/path/to/my/graphs", units="in", width=8, height=8, dpi=600, compression = 'lzw')
 
-#graph by a group
+#another option to graph averages per age
+age_hv_graph <- age_hv_graph %>% mutate(AgeBin = case_when(Age < 30 ~ "1_30", Age >= 30 & Age < 40 ~ "30_40",
+                                                                            Age >= 40 & Age < 50 ~ "40_50", Age >= 50 & Age < 60 ~ "50_60",
+                                                                            Age >= 60 & Age < 70 ~ "60_70", Age >= 70 ~ "over_70"))
+
+age_hv_graph_melt = melt(age_hv_graph, id.vars = c("subID", "Age", "AgeBin"))
+
+#this is getting your means per age group specifiied
+mean <- age_hv_graph_melt %>% 
+  group_by(AgeBin, variable) %>% 
+  summarize(average = mean(value)) %>%
+  ungroup()
+
+bigboxplotgraph <- ggplot(age_hv_graph_melt, aes(x=AgeBin, y=value,
+                                           fill=variable, color = variable)) +
+  geom_line(data = mean, 
+            mapping = aes(x = AgeBin, y = average, group=variable), size = 1) +
+  #geom_boxplot(aes(middle = mean(value)), outlier.shape = NA, color = "black") + #this can be helpful but is sometimes too much with too many groups
+  geom_point(position=position_jitterdodge(), size=1, alpha=0.5) +
+  scale_color_manual(values=c("#07aced", "#f94144", "#f9c74f", "#90be6d", "#9d73e6")) +
+  xlab('') + #Assign a label for your x axis
+  ylab('') + #Assign a label for your y axis
+  theme_bw(base_size = 10) + #this will make your diagram's background white
+  theme(legend.position = "none") #this gets rid of the legend, easier to edit in powerpoint
+bigboxplotgraph + scale_fill_manual(values=c("#07aced", "#f94144", "#f9c74f", "#90be6d", "#9d73e6"))
+
+ggsave("Age_volume_boxplots_averageline.tiff", path = "D:/path/to/my/directory", units="in", width=8, height=8, dpi=600, compression = 'lzw')
+
+
+#graph by a group (eg for each individual subfield you can graph per sex
 col <- c("#07aced", "#f94144")
 gender_effects_CA1 <- ggplot(data=data, aes(x=Age, y=CA1_residuals, color = gender_numfac, group = gender_numfac)) +
   scale_colour_manual(values = unique(as.character(col))) +
   geom_point(size=1, alpha=.6) +
-  stat_smooth(se=T,linewidth = 1, alpha = .2, aes(fill = gender_numfac)) +
+  stat_smooth(se=T,linewidth = 1, alpha = .2, aes(fill = gender_numfac)) + #fits a loess regression line
+  stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1, aes(color = gender_numfac, fill = gender_numfac), alpha = .2) + #this fits a quadratic line, may need to mess with it to get exactly what you're wanting
   theme_bw(base_size = 8) +
   theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
   labs(x="Age (years)", y="CA1 (residuals)") +
@@ -51,10 +81,13 @@ quadratic_model_CA1_age_plot <- ggplot(data=data, aes(x=Age, y=CA1_residuals)) +
   scale_x_continuous(expand = c(0, 0)) +
   theme_bw(base_size = 8) +
   geom_point(size=1, alpha=1, color = "#9d73e6")+
-  stat_smooth(se=T,linewidth = 1, color = "#9d73e6", fill = "#9d73e6", alpha = .2) +
+  stat_smooth(se=T,linewidth = 1, color = "#9d73e6", fill = "#9d73e6", alpha = .2) + #as mentioned above, this is technically a loess regreession. use line below for a true quadratic.
+  #stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1, color = "#9d73e6", fill = "#9d73e6", alpha = .2) + #this fits a quadratic line
   theme(panel.grid.major = element_blank(), axis.text = element_text(color = "black"),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")+
   labs(x="Age (years)", y="CA1 (residuals)")
 quadratic_model_CA1_age_plot
 ggsave("Age_CA1_quadratic.tiff", path = "D:/path/to/my/graphs", units="in", width=8, height=8, dpi=600, compression = 'lzw')
+
+
 
 
