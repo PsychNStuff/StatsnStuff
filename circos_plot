@@ -1,0 +1,49 @@
+#circos plot example
+library(circlize) #package needed
+
+  #load in data
+
+#here I'm getting only the data I want to include!
+data_circos <- data_full_final %>% transmute(Age = Age,
+                                             right_CA1 = right_CA1_residuals,
+                                             right_CA23 = right_CA23_residuals,
+                                             right_CA4DG = right_CA4DG_residuals,
+                                             right_Presubiculum = right_presubiculum_residuals,
+                                             right_Subiculum = right_subiculum_residuals,
+                                             Left_CA1 = left_CA1_residuals,
+                                             Left_CA23 = left_CA23_residuals,
+                                             Left_CA4DG = left_CA4DG_residuals,
+                                             Left_Presubiculum = left_presubiculum_residuals,
+                                             Left_Subiculum = left_subiculum_residuals)
+
+par.r <- partial.r(data_circos, 2:11, cs(Age)) #I did this with a partial correlation but you can also do it with a regular corr matrix
+circosdata <- as.matrix(par.r) #need this as a matric
+adjacdata = data.frame(from = rep(rownames(circosdata), times = ncol(circosdata)),
+                       to = rep(colnames(circosdata), each = nrow(circosdata)),
+                       value = as.vector(circosdata),
+                       stringsAsFactors = FALSE) #this reformats it as an adjacency matrix
+adjacdata_new <- adjacdata[adjacdata$from != adjacdata$to,] #this removes correlations between the same variable (i.e. I don't want to include the correlation of left subiculum and left subiculum because what's the point?)
+
+adjacdata_final <- adjacdata_new %>%
+  distinct(ign = round(value, 8), .keep_all = TRUE) %>%
+  select(-ign) #This removes duplicate values with the exact same correlation value.
+#So, this currently looks at both the correlation between left subiculum and left
+#ca23 and the correlation between left ca23 and left subiculum; that's redundant so I remove one of them.
+#Just be sure the number of datapoints in your matrix is accurate (adjacdata_new should be half of adjacdata_final)
+
+#col_fun = colorRamp2(range(-1:1), c("#fabebe", "#bf0a2a"))
+col_fun = colorRamp2(c(-1, -0.5, 0, 0.5, 1), c('#cc5803', '#ffb627', "white", '#ff8fa3', '#a4133c')) #this assigns colors to the effect size (lines in the middle)
+grid.col = c(right_CA1 = "#D9ED92", right_CA23 = "#76C893", right_CA4DG = "#34A0A4", right_Presubiculum = "#1A759F",
+             right_Subiculum = "#184E77", Left_CA1 = "#D9ED92", Left_CA23 = "#76C893", Left_CA4DG = "#34A0A4", Left_Presubiculum = "#1A759F",
+             Left_Subiculum = "#184E77") #this assigns values to the grid outside the circle
+
+
+# Make the circular plot
+png("/path/to/my/directory/circosplot.png", units="in", width=10, height=10, res = 600)
+circos.par(gap.after = c(right_CA1 = 5, right_CA23 = 5, right_CA4DG = 5, right_Presubiculum = 5,
+                         right_Subiculum = 30, Left_CA1 = 5, Left_CA23 = 5, Left_CA4DG = 5,
+                         Left_Presubiculum = 5,
+                         Left_Subiculum = 30), start.degree = 45) #you can use this to add gaps between values or rotate where it starts (start.degree)
+chordDiagram(adjacdata_final, col = col_fun, grid.col = grid.col, transparency = 0) #annotationTrack = "grid", can be added here to remove labels outside the circle
+circos.clear()
+dev.off()
