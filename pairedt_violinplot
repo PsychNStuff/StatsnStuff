@@ -38,7 +38,7 @@ t_graph + scale_fill_manual(values=c("#E01A4F", "#53B3CB")) #use colors you wish
 #stat_compare_means(paired = TRUE, method = "t.test", comparisons = my_comparisons, vjust = 1.75, hjust = -0.5) #adds ANOVA p value to your plot
 #theme(legend.position = "none") #this gets rid of the legend
 
-ggsave("examplepairedt.tiff", path = "path/to/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
+ggsave("examplepairedt.tiff", path = "path/to/directory", units="in", width=5, height=5, dpi=600, compression = 'lzw')
 
 #option to make a raincloud type graph with half violin plots
 #paired t graph with lines between
@@ -54,5 +54,20 @@ t_graph <- ggplot(data_mod, aes(x=group, y=value, fill=group)) + #main informati
   theme_bw(base_size = 10) #this will make your diagram's background white
 t_graph + scale_fill_manual(values=c("#E01A4F", "#53B3CB"))
 
-ggsave("some_pairedt_raincloud.tiff", path = "path/to/directory", units="in", width=5, height=4, dpi=600, compression = 'lzw')
+ggsave("some_pairedt_raincloud.tiff", path = "path/to/directory", units="in", width=5, height=5, dpi=600, compression = 'lzw')
+
+#option to make half violins with a distribution beside it
+
+library(ggdist) #for stat_halfeye
+
+t_graph <- ggplot(aes(x = group, y = yvals, fill = group), data = data_mod) +
+  stat_halfeye(adjust = 0.5, justification = -0.1, .width = 0, point_colour = NA, scale = 0.8) +
+  geom_boxplot(width = 0.12, outlier.color = NA, alpha = 0.5) +
+  scale_fill_manual(values = c('#f7a505', '#f74f6d')) +
+  theme_bw(base_size = 10)
+
+t_graph
+
+ggsave("pretty_dist.tiff", path = "path/to/directory", units="in", width=5, height=5, dpi=600, compression = 'lzw')
+
 
