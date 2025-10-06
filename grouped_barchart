@@ -1,0 +1,35 @@
+#first separate by conditions and use something (average, difference score) that matches between individuals
+
+data_condition1 <- data_full_final %>% transmute(Accuracy = condition1_Accuracy,
+                                              condition = "condition1",
+                                              Accuracy_match = All_Accuracy)
+data_condition2 <- data_full_final %>% transmute(Accuracy = condition2_Accuracy, condition = "condition2",
+                                                Accuracy_match = All_Accuracy)
+data_grapht <- rbind(data_condition1, data_condition2)
+
+#order data per condition by the matched score
+condition1_temp <- data_grapht[which(data_grapht$condition == "condition1"),]
+condition1_temp <- condition1_temp[order(condition1_temp$Accuracy_match, decreasing = F),]
+condition1_temp$order_acc <- order(condition1_temp$Accuracy_match, decreasing = F)
+
+condition2_temp <- data_grapht[which(data_grapht$condition == "condition2"),]
+condition2_temp <- condition2_temp[order(condition2_temp$Accuracy_match, decreasing = F),]
+condition2_temp$order_acc <- order(condition2_temp$Accuracy_match, decreasing = F)
+
+data_graphlines_acc <- rbind(condition1_temp, condition2_temp)
+
+#graph it
+graphlinesacc <- ggplot(data_graphlines_acc, aes(x=order_acc, y=Accuracy, color = condition)) +
+  #geom_segment(aes(x=order_acc, xend=order_acc, y=0, yend=Accuracy), size=2.3, colour="black") +
+  geom_segment( aes(x=order_acc, xend=order_acc, y=0, yend=Accuracy), size=1.5, alpha=0.6) + #adjust size and alpha as needed
+  scale_color_manual(values = c('#f7a505', '#f74f6d')) +
+  theme_light() +
+  theme(
+    panel.border = element_blank(),
+  ) +
+  xlab("") +
+  ylab("Accuracy")
+
+graphlinesacc
+
+ggsave("Accuracy_groupedbar.tiff", path = "/path/to/my/directory", units="in", width=5, height=5, dpi=600, compression = 'lzw')
