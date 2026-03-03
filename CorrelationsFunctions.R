@@ -56,3 +56,27 @@ corrplot(total_cor, addCoef.col = 'black', method = "color",
          tl.pos='l', number.cex = 3) #replace with the colors you want
 
 dev.off()
+
+#partial correlations
+par.r <- partial.r(data, c(5, 7:27), cs(Total.ICV)) #partial out ICV
+n.r <- corr.test(as.matrix(data[, c(5, 7:27)])) #we do this to get number n of participants used in each correlation
+n.r.fin <- n.r$n - 1 #subtract number of variables we control for from our matrix of participants, no need to do this in a regular correlation
+lowerMat(par.r) #r vals
+cp <- corr.p(par.r, n=n.r.fin, adjust = "fdr") #adjust for multiple comparisons with p vals
+print(cp,short=FALSE) #pvals
+
+corrplot(par.r,
+         method="color",
+         col=colorRampPalette(c('#C9184A', '#FFACC5', "white", '#90E0EF', '#0077B6'))(200),
+         p.mat = cp$p,
+         #order = "hclust",
+         insig = "label_sig",
+         sig.level = c(.001, .01, .05),
+         pch.cex = 1.5,
+         pch.col = "black",
+         tl.col="black",
+         tl.cex=1,
+         outline=TRUE,
+         cl.pos = "b",
+         tl.pos = "lt")
+dev.off()
