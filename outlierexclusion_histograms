@@ -1,0 +1,33 @@
+#for lots of data it's easier to exclude iteratively, let's do that
+#we'll start by reassigning your data to dataraw so we don't overwrite it
+dataraw <- data_exclude
+
+#next we use scale to z-score each row
+z_scores <- scale(dataraw[, 82:135])
+
+#this assigns T/F values to outliers based on whether the scores are 3 SD from the mean per the z scores
+outliers <- abs(z_scores) > 3
+
+#check
+table(outliers)
+sum(is.na(outliers))
+#number of TRUE plus original NA values should equal total NA after next command in dataraw
+dataraw[, 82:135][abs(z_scores) > 3] <- NA #this is the command that actually overwrites your data based on the values in your z-scores matrix!
+#check
+sum(is.na(dataraw[, 82:135]))
+
+#histograms of each of these variables
+long_data <- dataraw %>%
+  select(82:135) %>% # Select columns by index from 1 to 4
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+#check number NA vals again, should match!
+sum(is.na(dataraw[, 82:135]))
+sum(is.na(long_data$value))
+
+# Create a histogram for each variable using facets
+ggplot(data = long_data, aes(x = value)) +
+  geom_histogram(bins = 20, color = "black", fill = "gray90") + # Customize bins, color, fill
+  facet_wrap(~variable, scales = "free_x") + # Create separate panels with free x-axes
+  labs(title = "Histograms for Multiple Columns")
+ggsave("histsoutliersremoved.tiff", path = "path/to/histograms/", units="in", width=20, height=20, dpi=600, compression = 'lzw')
