@@ -80,3 +80,27 @@ corrplot(par.r,
          cl.pos = "b",
          tl.pos = "lt")
 dev.off()
+
+#for purposes of combining spearman and pearson corr for different variables
+#run pearson (default)
+par.r <- partial.r(data, c(5:9, 26), cs(Total.ICV))
+
+#this just gives us the number of participants per analysis which should not change no matter whether using pearson or spearman
+n.r <- corr.test(as.matrix(data[, c(5:9, 26)]))
+n.r.fin <- n.r$n - 1 #remember to remove number of variables controlling for
+
+#run spearman
+par.rspear <- partial.r(data, c(5:9, 26), cs(Total.ICV), method = "spearman")
+
+#combine across matrices, this uses par.r and replaces specific columns/rows with par.rspear (can switch it if necessary)
+par.r.combo <- par.r #rename
+par.r.combo[6, 1:5] <- par.rspear[6, 1:5] #combine
+par.r.combo[1:5, 6] <- par.rspear[1:5, 6] #switch for columnwise
+
+#check
+print(par.r)
+print(par.rspear)
+print(par.r.combo)
+
+#run FDR correction
+cp.combo <- corr.p(par.r.combo, n = n.r.fin, adjust = "fdr")
