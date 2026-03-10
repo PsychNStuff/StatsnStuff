@@ -94,8 +94,8 @@ par.rspear <- partial.r(data, c(5:9, 26), cs(Total.ICV), method = "spearman")
 
 #combine across matrices, this uses par.r and replaces specific columns/rows with par.rspear (can switch it if necessary)
 par.r.combo <- par.r #rename
-par.r.combo[6, 1:5] <- par.rspear[6, 1:5] #combine
-par.r.combo[1:5, 6] <- par.rspear[1:5, 6] #switch for columnwise
+par.r.combo[6, ] <- par.rspear[6, ] #combine for rows
+par.r.combo[, 6] <- par.rspear[, 6] #switch for columnwise
 
 #check
 print(par.r)
@@ -104,3 +104,4 @@ print(par.r.combo)
 
 #run FDR correction
 cp.combo <- corr.p(par.r.combo, n = n.r.fin, adjust = "fdr")
+
