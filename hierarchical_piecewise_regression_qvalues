@@ -12,8 +12,7 @@ library(boot)
 data <- read_xlsx('D:/path/to/my/data.xlsx')
 
 #showing for hippocampal volume, age, and gender
-#sum hippocampal volume across hemispheres
-hv_total <- rowSums(data[,c("left_HV", "right_HV")])
+#average hippocampal volume across hemispheres
 
 #calculating residuals for bilateral HV
 hv_residuals_temp <- lm(hv_total ~ EstimatedTotalIntraCranialVol, data = data)
