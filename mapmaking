@@ -1,0 +1,49 @@
+library(tidyverse)
+library(sf)
+library(tigris)
+
+#try to make map of NE and IA zip codes - get data first
+ma_zctas <- zctas(state = "NE", cb = TRUE, year = 2000)
+ia_zctas <- zctas(state = "IA", cb = TRUE, year = 2000)
+
+#this is if you want to use multiple states, need the column names to match. the numbers are part of the FIPS code.
+ia2_zctas <- rename(ia_zctas, ZT31_D00_ = ZT19_D00_, ZT31_D00_I = ZT19_D00_I)
+
+combinedia_ne <- bind_rows(ma_zctas, ia2_zctas) #assumes you have fin_data with a zip code column, make sure if you have zip codes starting with 0 they are loaded into R as characters! If it's numeric R will not count the 0s
+fin_data$zip_char <- as.character(fin_data$ZIP)
+
+map_data <- combinedia_ne %>%
+  right_join(fin_data, by = c("ZCTA" = "zip_char"))
+
+sum(duplicated(map_data$Measure.volume)) #check, some zip codes may be duplicated because they match multiple counties. OK for map making.
+
+df_numbered <- map_data %>% #repeat_num indicates the number of times columns 1-8 (your downloaded data) repeat, thus it gives you the number of participants coming from that zip code
+  group_by(across(c(1:8))) %>%
+  mutate(repeat_num = max(row_number())) %>%
+  ungroup()
+
+#can also split by group as needed
+ADS_df_map <- map_data[which(map_data$Disease_recode == "ADS"),]
+HC_df_map <- map_data[which(map_data$Disease_recode == "HC"),]
+
+df_numbered_ADS <- ADS_df_map %>%
+  group_by(across(c(1:8))) %>%
+  mutate(repeat_num = max(row_number())) %>%
+  ungroup()
+
+df_numbered_CN <- HC_df_map %>%
+  group_by(across(c(1:8))) %>%
+  mutate(repeat_num = max(row_number())) %>%
+  ungroup()
+
+ggplot() +
+  geom_sf(data = combinedia_ne, fill = "gray", color = "gray", size = 0.2) +
+  geom_sf(data = df_numbered, aes(fill = repeat_num), size = 0.2) + #you can experiment with this and fill by other data too!
+  scale_fill_gradientn(
+    colors = c("#e9d8a6", "#fb8500", "#ae2012")
+  ) + # Clear, accessible color palette
+  theme_void() # Removes grid lines and axis coordinates for a clean map look
+ggsave("NE_IA_map.tiff", path = "D:/path/to/my/graphs", units="in", width=10, height=5, dpi=600, compression = 'lzw')
+
+  theme_void() # Removes grid lines and axis coordinates for a clean map look
+ggsave("allparticipants_NE_IA_map_IRR.tiff", path = "D:/DMAP_1_2_T2_inflammation_np/graphs/map", units="in", width=10, height=5, dpi=600, compression = 'lzw')
