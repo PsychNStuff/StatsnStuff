@@ -1,0 +1,65 @@
+#let's compare ADS and HC with Fisher's z
+#this assumes you have correlation data called par.r.ADS or par.r.HC (matrix), p values in cp.p.ADS or .HC, and number of participants in n.r.fin.ADS or .HC. All matrices.
+library(diffcor)
+library(tidyverse)
+library(dplyr)
+
+ADS_r_long = data.frame(from = rep(rownames(par.r.ADS), times = ncol(par.r.ADS)),
+                       to = rep(colnames(par.r.ADS), each = nrow(par.r.ADS)),
+                       ADS_effectsize = as.vector(par.r.ADS),
+                       stringsAsFactors = FALSE)
+ADS_r_long_new <- ADS_r_long[ADS_r_long$from != ADS_r_long$to,]
+ADS_r_long_final <- ADS_r_long_new
+
+cp.p.ADS <- cp.ADS$p
+cp.p.ADS[lower.tri(cp.p.ADS, diag = T)] <- NA
+ADS_p_long = data.frame(from = rep(rownames(cp.p.ADS), times = ncol(cp.p.ADS)),
+                        to = rep(colnames(cp.p.ADS), each = nrow(cp.p.ADS)),
+                        ADS_pvals = as.vector(cp.p.ADS),
+                        stringsAsFactors = FALSE)
+ADS_p_long_new <- ADS_p_long[ADS_p_long$from != ADS_p_long$to,]
+ADS_p_long_final <- na.omit(ADS_p_long_new)
+
+ADS_n_long = data.frame(from = rep(rownames(n.r.fin.ADS), times = ncol(n.r.fin.ADS)),
+                        to = rep(colnames(n.r.fin.ADS), each = nrow(n.r.fin.ADS)),
+                        ADS_numberparticipants = as.vector(n.r.fin.ADS),
+                        stringsAsFactors = FALSE)
+ADS_n_long_final <- ADS_n_long[ADS_n_long$from != ADS_n_long$to,]
+
+ADS_corr_join1 <- left_join(ADS_p_long_final, ADS_r_long_final)
+ADS_corr_join <- left_join(ADS_corr_join1, ADS_n_long_final)
+
+#same for HC
+HC_r_long = data.frame(from = rep(rownames(par.r.HC), times = ncol(par.r.HC)),
+                        to = rep(colnames(par.r.HC), each = nrow(par.r.HC)),
+                        HC_effectsize = as.vector(par.r.HC),
+                        stringsAsFactors = FALSE)
+HC_r_long_new <- HC_r_long[HC_r_long$from != HC_r_long$to,]
+HC_r_long_final <- HC_r_long_new
+
+cp.p.HC <- cp.HC$p
+cp.p.HC[lower.tri(cp.p.HC, diag = T)] <- NA
+HC_p_long = data.frame(from = rep(rownames(cp.p.HC), times = ncol(cp.p.HC)),
+                        to = rep(colnames(cp.p.HC), each = nrow(cp.p.HC)),
+                        HC_pvals = as.vector(cp.p.HC),
+                        stringsAsFactors = FALSE)
+HC_p_long_new <- HC_p_long[HC_p_long$from != HC_p_long$to,]
+HC_p_long_final <- na.omit(HC_p_long_new)
+
+HC_n_long = data.frame(from = rep(rownames(n.r.fin.HC), times = ncol(n.r.fin.HC)),
+                        to = rep(colnames(n.r.fin.HC), each = nrow(n.r.fin.HC)),
+                        HC_numberparticipants = as.vector(n.r.fin.HC),
+                        stringsAsFactors = FALSE)
+HC_n_long_final <- HC_n_long[HC_n_long$from != HC_n_long$to,]
+
+HC_corr_join1 <- left_join(HC_p_long_final, HC_r_long_final)
+HC_corr_join <- left_join(HC_corr_join1, HC_n_long_final)
+
+corr_join <- inner_join(HC_corr_join, ADS_corr_join)
+
+corr_join$fisherz <- diffcor.two(corr_join$HC_effectsize, corr_join$ADS_effectsize, corr_join$HC_numberparticipants,
+            corr_join$ADS_numberparticipants, alpha = .05, cor.names = NULL,
+            alternative = c("two.sided"), digit = 3)
+
+#p.adjust next
+corr_join$adjusted_ps <- p.adjust(p = corr_join$fisherz$p, method = "fdr")
