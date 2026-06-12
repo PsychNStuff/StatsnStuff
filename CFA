@@ -1,0 +1,36 @@
+library(lavaan)
+library(psych)
+
+#assumes you have already processed your data, checking for administration errors, skewness, normality, etc. and it is stored in fin_data_filt
+
+#check the model fit
+cfa.model <- 'CFA  =~ var1 + var2 + var3 + var4 + var5'
+fit.cfa.model <- cfa(cfa.model, data = fin_data_filt)
+summary(fit.cfa.model, fit.measures = TRUE)
+parameterEstimates(fit.cfa.model, rsquare = TRUE, standardized = TRUE, output = "pretty")
+varTable(fit.cfa.model)
+
+#notes:
+# Comparative Fit Index (CFI) > 0.95 = good model fit
+# Root Mean Square Error of Approximation (RMSEA) < .06 = good model fit
+# Standardized Root Mean Square Residual (SRMR) < .08 = good model fit
+# Chi-square (χ²): not significant or lower values indicate better model fit
+# AIC and BIC: lower values indicate better model fit, typically > 10 point change is substantial change in fit
+# If CFI is 1 and RSMEA/SRMR are 0, this indicates you have a saturated model (i.e., you are effectively estimating all degrees of freedom in your model (resulting in 0 degrees of freedom) because there are as many parameters as there are data points)--not necessarily bad, but worth reporting.
+
+data_cfa <- fin_data_filt %>%
+  dplyr::select(id, var1, var2, var3, var4, var5)
+
+#3. Run the initial PCA for the aforementioned variables included in the CFA if model fit indices are close to the "good" threshold. loadings should be > .70
+pc <-principal(data_cfa[2:6], nfactors = 2, rotate = "varimax", scores = TRUE, missing = TRUE, impute = "median", covar = TRUE) #-change variable columns based on your variables included, keep nfactors as 1-3 depending on how many variables are deemed significant in your MANOVA and/or based on a priori hypotheses regarding their funcitonal relevance (e.g., neuroinflammatory, vascular, t-cell, etc.), keep rotate as varimax unless you have less than 3 variables in the PC
+
+print(pc$loadings)
+print(pc$values)
+print(pc$fit)
+print(pc$weights)
+print(pc$Vaccounted)
+print(pc$STATISTIC)
+
+# Assuming you have 2 PC scores, rename these so they make sense for further analysis
+data_cfa$PC_RC1 <- pc_score$scores[, 1]
+data_cfa$PC_RC2 <- pc_score$scores[, 2]
